@@ -1,26 +1,33 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# PyInstaller / Build artifacts
-build/
+## Visual Studio / .NET ignores
+.vs/
+[Bb]in/
+[Oo]bj/
+publish/
 dist/
-*.spec
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
 
-# User configs & local state
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rms/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+## User specific files
+*.rsuser
+*.suo
+*.user
+*.userprefs
+*.ncb
+*.suo
+*.pdb
+
+## Local config
 autoclicker_config.json
-test_config_temp.json
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-
-# IDE files
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
