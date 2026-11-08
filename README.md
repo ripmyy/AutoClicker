@@ -4,8 +4,6 @@ AutoClicker is an open-source automation utility for Windows, written in C# and 
 
 While traditional autoclickers require the target window to remain focused in the foreground, this project allows you to send clicks directly to inactive, background, or alt-tabbed windows (such as Roblox, Minecraft, browsers, or emulators) without moving your physical mouse cursor or stealing focus.
 
-![AutoClicker Background Demo](assets/demo.gif)
-
 ## Features
 
 - Background clicking on inactive/alt-tabbed windows using native Win32 messages.
