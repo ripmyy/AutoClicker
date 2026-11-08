@@ -9,10 +9,9 @@
     <Version>2.0.0</Version>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
-    <Title>AutoClicker Reimagined</Title>
-    <Product>AutoClicker Reimagined</Product>
-    <Company>AutoClicker Open Source Community</Company>
-    <Description>Modern C# WPF Auto Clicker with Background Inactive Window Automation (Alt-Tab Friendly), Anti-Detection Jitter, and High-Precision Engine</Description>
+    <Title>AutoClicker</Title>
+    <Product>AutoClicker</Product>
+    <Description>Windows Auto Clicker with Background Inactive Window Automation</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 

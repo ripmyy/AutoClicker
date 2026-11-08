@@ -57,7 +57,10 @@ namespace AutoClicker.Models
         }
 
         // Target (Background or Fixed)
+        [System.Text.Json.Serialization.JsonIgnore]
         public IntPtr TargetHwnd { get; set; } = IntPtr.Zero;
+        public string TargetProcessName { get; set; } = string.Empty;
+        public string TargetWindowTitle { get; set; } = string.Empty;
         public int TargetX { get; set; } = 100;
         public int TargetY { get; set; } = 100;
 

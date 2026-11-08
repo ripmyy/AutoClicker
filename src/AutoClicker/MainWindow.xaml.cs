@@ -18,6 +18,8 @@ namespace AutoClicker
         private IntPtr _windowHandle = IntPtr.Zero;
         private List<WindowInfo> _windows = new();
         private IntPtr _currentTargetHwnd = IntPtr.Zero;
+        private string _currentTargetTitle = string.Empty;
+        private string _currentTargetProcess = string.Empty;
 
         private const int HOTKEY_ID_TOGGLE = 9001;
         private const int HOTKEY_ID_PICK = 9002;
@@ -39,16 +41,20 @@ namespace AutoClicker
             var source = HwndSource.FromHwnd(_windowHandle);
             source?.AddHook(HwndHook);
 
-            // Register default global hotkeys F6 (toggle) and F7 (picker)
             RegisterHotkeys();
-
             RefreshActiveWindows();
+
+            // Load saved settings
+            ApplyLoadedSettings(SettingsManager.Load());
         }
 
         private void OnMainWindowClosed(object? sender, EventArgs e)
         {
             _engine.Stop("Window Closed");
             UnregisterHotkeys();
+
+            // Save settings on exit
+            SettingsManager.Save(BuildSettings());
         }
 
         private void RegisterHotkeys()
@@ -88,12 +94,24 @@ namespace AutoClicker
             _windows = WindowManager.GetActiveWindows();
             CmbActiveWindows.Items.Clear();
 
-            foreach (var win in _windows)
+            int matchedIndex = -1;
+            for (int i = 0; i < _windows.Count; i++)
             {
+                var win = _windows[i];
                 CmbActiveWindows.Items.Add(win);
+
+                if (!string.IsNullOrEmpty(_currentTargetProcess) &&
+                    win.ProcessName.Equals(_currentTargetProcess, StringComparison.OrdinalIgnoreCase))
+                {
+                    matchedIndex = i;
+                }
             }
 
-            if (_windows.Count > 0 && _currentTargetHwnd == IntPtr.Zero)
+            if (matchedIndex >= 0)
+            {
+                CmbActiveWindows.SelectedIndex = matchedIndex;
+            }
+            else if (_windows.Count > 0 && _currentTargetHwnd == IntPtr.Zero)
             {
                 CmbActiveWindows.SelectedIndex = 0;
             }
@@ -104,6 +122,8 @@ namespace AutoClicker
             if (CmbActiveWindows.SelectedItem is WindowInfo win)
             {
                 _currentTargetHwnd = win.Handle;
+                _currentTargetTitle = win.Title;
+                _currentTargetProcess = win.ProcessName;
                 UpdateTargetSummary(win.DisplayText, int.TryParse(TxtCoordX.Text, out int x) ? x : 0, int.TryParse(TxtCoordY.Text, out int y) ? y : 0);
             }
         }
@@ -121,6 +141,9 @@ namespace AutoClicker
             if (picker.PickedSuccessfully)
             {
                 _currentTargetHwnd = picker.CapturedHwnd;
+                _currentTargetTitle = picker.CapturedTitle;
+                _currentTargetProcess = picker.CapturedProcess;
+
                 TxtCoordX.Text = picker.CapturedClientX.ToString();
                 TxtCoordY.Text = picker.CapturedClientY.ToString();
 
@@ -129,7 +152,6 @@ namespace AutoClicker
 
                 RadioModeBackground.IsChecked = true;
 
-                // Select matching window in combo if present
                 for (int i = 0; i < CmbActiveWindows.Items.Count; i++)
                 {
                     if (CmbActiveWindows.Items[i] is WindowInfo w && w.Handle == _currentTargetHwnd)
@@ -162,7 +184,7 @@ namespace AutoClicker
         {
             if (_currentTargetHwnd == IntPtr.Zero || !Win32.IsWindow(_currentTargetHwnd))
             {
-                MessageBox.Show("Please pick or select a valid target window first!", "Target Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Please pick or select a valid target window first.", "Target Required", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -179,16 +201,18 @@ namespace AutoClicker
                 try { SystemSounds.Asterisk.Play(); } catch { }
             }
 
-            TxtTargetSummary.Text = $"✅ Sent test click to target at ({x}, {y})!";
+            TxtTargetSummary.Text = $"Sent test click to target at ({x}, {y}).";
         }
 
         private ClickSettings BuildSettings()
         {
-            var s = new ClickSettings
+            return new ClickSettings
             {
                 Mode = RadioModeBackground.IsChecked == true ? TargetingMode.BackgroundWindow :
                        (RadioModeCursor.IsChecked == true ? TargetingMode.CurrentCursor : TargetingMode.FixedScreen),
                 TargetHwnd = _currentTargetHwnd,
+                TargetProcessName = _currentTargetProcess,
+                TargetWindowTitle = _currentTargetTitle,
                 TargetX = int.TryParse(TxtCoordX.Text, out int tx) ? tx : 100,
                 TargetY = int.TryParse(TxtCoordY.Text, out int ty) ? ty : 100,
 
@@ -214,7 +238,42 @@ namespace AutoClicker
                 PlayAudio = ChkAudio.IsChecked == true,
                 TopMost = ChkTopMost.IsChecked == true
             };
-            return s;
+        }
+
+        private void ApplyLoadedSettings(ClickSettings s)
+        {
+            if (s.Mode == TargetingMode.CurrentCursor) RadioModeCursor.IsChecked = true;
+            else if (s.Mode == TargetingMode.FixedScreen) RadioModeFixed.IsChecked = true;
+            else RadioModeBackground.IsChecked = true;
+
+            TxtCoordX.Text = s.TargetX.ToString();
+            TxtCoordY.Text = s.TargetY.ToString();
+            _currentTargetProcess = s.TargetProcessName;
+            _currentTargetTitle = s.TargetWindowTitle;
+
+            CmbMouseButton.SelectedIndex = (int)s.Button;
+            CmbClickType.SelectedIndex = (int)s.Type;
+            TxtHoldMs.Text = s.HoldDurationMs.ToString();
+
+            ChkCpsMode.IsChecked = s.UseCpsMode;
+            SliderCps.Value = s.Cps;
+
+            TxtHours.Text = s.Hours.ToString();
+            TxtMins.Text = s.Minutes.ToString();
+            TxtSecs.Text = s.Seconds.ToString();
+            TxtMs.Text = s.Milliseconds.ToString();
+
+            ChkJitter.IsChecked = s.JitterEnabled;
+            TxtJitterMs.Text = s.JitterMilliseconds.ToString();
+            TxtJitterPx.Text = s.JitterPixels.ToString();
+
+            if (s.Repeat == RepeatMode.CountLimit) RadioRepeatCount.IsChecked = true;
+            else RadioRepeatInfinite.IsChecked = true;
+
+            TxtRepeatCount.Text = s.MaxClicks.ToString();
+            ChkAudio.IsChecked = s.PlayAudio;
+            ChkTopMost.IsChecked = s.TopMost;
+            Topmost = s.TopMost;
         }
 
         private void OnBtnStartStopClicked(object sender, RoutedEventArgs e)
@@ -232,7 +291,7 @@ namespace AutoClicker
                 var settings = BuildSettings();
                 if (settings.Mode == TargetingMode.BackgroundWindow && (settings.TargetHwnd == IntPtr.Zero || !Win32.IsWindow(settings.TargetHwnd)))
                 {
-                    MessageBox.Show("Please pick or select a valid target window for background clicking!", "Target Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Please pick or select a valid target window for background clicking.", "Target Required", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -251,19 +310,19 @@ namespace AutoClicker
                 if (isRunning)
                 {
                     BadgeStatus.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#065F46"));
-                    TxtStatus.Text = "● CLICKING...";
+                    TxtStatus.Text = "Running";
                     TxtStatus.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#34D399"));
 
-                    BtnStartStop.Content = "⏹ STOP (F6)";
+                    BtnStartStop.Content = "Stop (F6)";
                     BtnStartStop.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
                 }
                 else
                 {
                     BadgeStatus.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#334155"));
-                    TxtStatus.Text = "● STOPPED";
+                    TxtStatus.Text = "Stopped";
                     TxtStatus.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#94A3B8"));
 
-                    BtnStartStop.Content = "▶ START (F6)";
+                    BtnStartStop.Content = "Start (F6)";
                     BtnStartStop.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
                 }
             });
@@ -274,8 +333,8 @@ namespace AutoClicker
             Dispatcher.Invoke(() =>
             {
                 TxtMetricClicks.Text = $"Clicks: {totalClicks:N0}";
-                TxtMetricCps.Text = $"Speed: {currentCps:F1} CPS";
-                TxtMetricTime.Text = $"Time: {elapsed:hh\\:mm\\:ss}";
+                TxtMetricCps.Text = $"{currentCps:F1} CPS";
+                TxtMetricTime.Text = $"{elapsed:hh\\:mm\\:ss}";
             });
         }
 
@@ -309,7 +368,10 @@ namespace AutoClicker
 
         private void OnTargetModeChanged(object sender, RoutedEventArgs e)
         {
-            // UI visibility tweaks if needed
+            if (GrpBackgroundTarget != null)
+            {
+                GrpBackgroundTarget.IsEnabled = RadioModeBackground.IsChecked == true;
+            }
         }
 
         private void OnTopMostChanged(object sender, RoutedEventArgs e)
