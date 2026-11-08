@@ -1,0 +1,6 @@
+customtkinter>=6.0.0
+pynput>=1.8.0
+keyboard>=0.13.5
+psutil>=5.9.0
+pillow>=10.0.0
+pyinstaller>=6.0.0
