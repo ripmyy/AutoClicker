@@ -54,7 +54,7 @@ Pre-compiled Windows binaries are located in the `dist` directory:
 Requirements: .NET 6.0 SDK or newer on Windows.
 
 ```bash
-git clone https://github.com/your-username/AutoClicker.git
+git clone https://github.com/ripmyy/AutoClicker.git
 cd AutoClicker
 
 # Build release
