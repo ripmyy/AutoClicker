@@ -2,15 +2,16 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="AutoClicker"
-        Width="610" Height="645"
-        MinWidth="580" MinHeight="620"
+        Width="620" Height="675"
+        MinWidth="580" MinHeight="630"
         Background="{StaticResource BgDark}"
         WindowStartupLocation="CenterScreen">
 
     <Grid Margin="14,12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/> <!-- Header -->
-            <RowDefinition Height="Auto"/> <!-- Target Window -->
+            <RowDefinition Height="Auto"/> <!-- Mode Selector -->
+            <RowDefinition Height="Auto"/> <!-- Target Window Controls -->
             <RowDefinition Height="*"/>    <!-- 2 Columns: Interval & Options -->
             <RowDefinition Height="Auto"/> <!-- Bottom Status Bar -->
         </Grid.RowDefinitions>
@@ -31,26 +32,32 @@
                                Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,1,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnHotkeys" Content="Hotkeys"
+                            Background="#334155" Foreground="#FFFFFF"
+                            Height="26" Width="72" Margin="0,0,12,0"
+                            Click="OnBtnHotkeysClicked"/>
                     <CheckBox x:Name="ChkTopMost" Content="Always on top" IsChecked="True"
-                              Checked="OnTopMostChanged" Unchecked="OnTopMostChanged" Margin="0,0,14,0"/>
+                              Checked="OnTopMostChanged" Unchecked="OnTopMostChanged" Margin="0,0,12,0"/>
                     <CheckBox x:Name="ChkAudio" Content="Audio cues" IsChecked="True"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 1. Background Target Section -->
-        <GroupBox Grid.Row="1" x:Name="GrpBackgroundTarget" Header="Target window (Alt-Tab background)" Margin="0,0,0,10">
-            <StackPanel>
-                <!-- Mode Radio Buttons -->
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,8">
-                    <RadioButton x:Name="RadioModeBackground" Content="Background window (Alt-Tab)" IsChecked="True"
-                                 Checked="OnTargetModeChanged" Margin="0,0,16,0"/>
-                    <RadioButton x:Name="RadioModeCursor" Content="Current cursor"
-                                 Checked="OnTargetModeChanged" Margin="0,0,16,0"/>
-                    <RadioButton x:Name="RadioModeFixed" Content="Fixed coordinate"
-                                 Checked="OnTargetModeChanged"/>
-                </StackPanel>
+        <!-- 1. Mode Selector (ALWAYS ENABLED) -->
+        <GroupBox Grid.Row="1" Header="Target mode" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Margin="2,4">
+                <RadioButton x:Name="RadioModeBackground" Content="Background window (Alt-Tab)" IsChecked="True"
+                             Checked="OnTargetModeChanged" Margin="0,0,18,0"/>
+                <RadioButton x:Name="RadioModeCursor" Content="Current cursor"
+                             Checked="OnTargetModeChanged" Margin="0,0,18,0"/>
+                <RadioButton x:Name="RadioModeFixed" Content="Fixed coordinate"
+                             Checked="OnTargetModeChanged"/>
+            </StackPanel>
+        </GroupBox>
 
+        <!-- 2. Target Window Controls (Disabled when in cursor mode) -->
+        <GroupBox Grid.Row="2" x:Name="GrpBackgroundTarget" Header="Target window and coordinates" Margin="0,0,0,10">
+            <StackPanel x:Name="PanelBackgroundControls">
                 <!-- Interactive Target Picker Button -->
                 <Button x:Name="BtnPickTarget" Content="Pick Window and Coordinate (F7)"
                         Background="#0284C7" Foreground="#FFFFFF" FontWeight="SemiBold"
@@ -72,7 +79,7 @@
                 </Grid>
 
                 <!-- Coordinates, Center, and Test Click Row -->
-                <Grid Margin="0,0,0,4">
+                <Grid x:Name="PanelCoordinates" Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="65"/>
@@ -102,8 +109,8 @@
             </StackPanel>
         </GroupBox>
 
-        <!-- 2. Two Columns Layout -->
-        <Grid Grid.Row="2" Margin="0,0,0,10">
+        <!-- 3. Two Columns Layout -->
+        <Grid Grid.Row="3" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="10"/>
@@ -116,29 +123,32 @@
                 <!-- Click Interval Card -->
                 <GroupBox Header="Click interval" Margin="0,0,0,10">
                     <StackPanel>
-                        <!-- Top toggle row -->
-                        <Grid Margin="0,0,0,6">
-                            <TextBlock x:Name="TxtSpeedLabel"
-                                       Text="Speed: 10.0 CPS (100 ms)"
-                                       FontFamily="Consolas" FontWeight="SemiBold" FontSize="12"
-                                       Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="ChkCpsMode" Content="CPS mode"
+                        <!-- Row 1: Mode Switch -->
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="Interval mode:" Foreground="{StaticResource TextSecondary}" FontSize="11" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="ChkCpsMode" Content="Direct CPS mode"
                                       IsChecked="True" Checked="OnCpsModeChanged" Unchecked="OnCpsModeChanged"
                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
+
+                        <!-- Row 2: Speed Readout (Never overlaps!) -->
+                        <TextBlock x:Name="TxtSpeedLabel"
+                                   Text="Speed: 10.0 CPS (100 ms interval)"
+                                   FontFamily="Consolas" FontWeight="SemiBold" FontSize="11.5"
+                                   Foreground="{StaticResource TextPrimary}" Margin="0,0,0,4"/>
 
                         <!-- CPS Slider Container -->
                         <StackPanel x:Name="PanelCps">
                             <Slider x:Name="SliderCps" Minimum="1" Maximum="250" Value="10" SmallChange="1" LargeChange="10"
                                     ValueChanged="OnCpsSliderChanged" Margin="0,2,0,6"/>
                             <WrapPanel Margin="0,0,0,2">
-                                <Button Content="5" Width="36" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
-                                <Button Content="10" Width="36" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
-                                <Button Content="16" Width="36" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
-                                <Button Content="25" Width="36" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
-                                <Button Content="50" Width="36" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
-                                <Button Content="100" Width="40" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
-                                <Button Content="200" Width="40" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="5" Width="38" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="10" Width="38" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="16" Width="38" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="25" Width="38" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="50" Width="38" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="100" Width="44" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
+                                <Button Content="200" Width="44" Height="24" Background="#334155" Foreground="#FFFFFF" Margin="2" Click="OnQuickCpsClicked"/>
                             </WrapPanel>
                         </StackPanel>
 
@@ -254,8 +264,8 @@
             </StackPanel>
         </Grid>
 
-        <!-- 3. Bottom Status Bar -->
-        <Border Grid.Row="3" Background="#0C121D" CornerRadius="6" Padding="10,8"
+        <!-- 4. Bottom Status Bar -->
+        <Border Grid.Row="4" Background="#0C121D" CornerRadius="6" Padding="10,8"
                 BorderBrush="{StaticResource BgCardBorder}" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>

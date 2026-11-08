@@ -21,6 +21,11 @@ namespace AutoClicker
         private string _currentTargetTitle = string.Empty;
         private string _currentTargetProcess = string.Empty;
 
+        private uint _toggleKeyVk = 0x75; // VK_F6
+        private string _toggleKeyName = "F6";
+        private uint _pickKeyVk = 0x76;   // VK_F7
+        private string _pickKeyName = "F7";
+
         private const int HOTKEY_ID_TOGGLE = 9001;
         private const int HOTKEY_ID_PICK = 9002;
 
@@ -41,11 +46,12 @@ namespace AutoClicker
             var source = HwndSource.FromHwnd(_windowHandle);
             source?.AddHook(HwndHook);
 
+            // Load saved settings first so custom hotkeys are loaded
+            ApplyLoadedSettings(SettingsManager.Load());
+
             RegisterHotkeys();
             RefreshActiveWindows();
-
-            // Load saved settings
-            ApplyLoadedSettings(SettingsManager.Load());
+            UpdateActionButtonsText();
         }
 
         private void OnMainWindowClosed(object? sender, EventArgs e)
@@ -59,15 +65,27 @@ namespace AutoClicker
 
         private void RegisterHotkeys()
         {
-            // VK_F6 = 0x75, VK_F7 = 0x76
-            Win32.RegisterHotKey(_windowHandle, HOTKEY_ID_TOGGLE, Win32.MOD_NOREPEAT, 0x75);
-            Win32.RegisterHotKey(_windowHandle, HOTKEY_ID_PICK, Win32.MOD_NOREPEAT, 0x76);
+            Win32.RegisterHotKey(_windowHandle, HOTKEY_ID_TOGGLE, Win32.MOD_NOREPEAT, _toggleKeyVk);
+            Win32.RegisterHotKey(_windowHandle, HOTKEY_ID_PICK, Win32.MOD_NOREPEAT, _pickKeyVk);
         }
 
         private void UnregisterHotkeys()
         {
             Win32.UnregisterHotKey(_windowHandle, HOTKEY_ID_TOGGLE);
             Win32.UnregisterHotKey(_windowHandle, HOTKEY_ID_PICK);
+        }
+
+        private void UpdateActionButtonsText()
+        {
+            if (!_engine.IsRunning)
+            {
+                BtnStartStop.Content = $"Start ({_toggleKeyName})";
+            }
+            else
+            {
+                BtnStartStop.Content = $"Stop ({_toggleKeyName})";
+            }
+            BtnPickTarget.Content = $"Pick Window and Coordinate ({_pickKeyName})";
         }
 
         private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -87,6 +105,27 @@ namespace AutoClicker
                 }
             }
             return IntPtr.Zero;
+        }
+
+        private void OnBtnHotkeysClicked(object sender, RoutedEventArgs e)
+        {
+            var dlg = new HotkeySettingsWindow(_toggleKeyVk, _toggleKeyName, _pickKeyVk, _pickKeyName)
+            {
+                Owner = this
+            };
+
+            if (dlg.ShowDialog() == true)
+            {
+                UnregisterHotkeys();
+                _toggleKeyVk = dlg.ToggleKeyVk;
+                _toggleKeyName = dlg.ToggleKeyName;
+                _pickKeyVk = dlg.PickKeyVk;
+                _pickKeyName = dlg.PickKeyName;
+                RegisterHotkeys();
+
+                UpdateActionButtonsText();
+                SettingsManager.Save(BuildSettings());
+            }
         }
 
         private void RefreshActiveWindows()
@@ -235,6 +274,11 @@ namespace AutoClicker
                 Repeat = RadioRepeatCount.IsChecked == true ? RepeatMode.CountLimit : RepeatMode.UntilStopped,
                 MaxClicks = int.TryParse(TxtRepeatCount.Text, out int mc) ? mc : 1000,
 
+                ToggleKeyVk = _toggleKeyVk,
+                ToggleKeyName = _toggleKeyName,
+                PickKeyVk = _pickKeyVk,
+                PickKeyName = _pickKeyName,
+
                 PlayAudio = ChkAudio.IsChecked == true,
                 TopMost = ChkTopMost.IsChecked == true
             };
@@ -271,9 +315,17 @@ namespace AutoClicker
             else RadioRepeatInfinite.IsChecked = true;
 
             TxtRepeatCount.Text = s.MaxClicks.ToString();
+
+            _toggleKeyVk = s.ToggleKeyVk != 0 ? s.ToggleKeyVk : 0x75;
+            _toggleKeyName = !string.IsNullOrEmpty(s.ToggleKeyName) ? s.ToggleKeyName : "F6";
+            _pickKeyVk = s.PickKeyVk != 0 ? s.PickKeyVk : 0x76;
+            _pickKeyName = !string.IsNullOrEmpty(s.PickKeyName) ? s.PickKeyName : "F7";
+
             ChkAudio.IsChecked = s.PlayAudio;
             ChkTopMost.IsChecked = s.TopMost;
             Topmost = s.TopMost;
+
+            OnTargetModeChanged(this, new RoutedEventArgs());
         }
 
         private void OnBtnStartStopClicked(object sender, RoutedEventArgs e)
@@ -313,7 +365,7 @@ namespace AutoClicker
                     TxtStatus.Text = "Running";
                     TxtStatus.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#34D399"));
 
-                    BtnStartStop.Content = "Stop (F6)";
+                    BtnStartStop.Content = $"Stop ({_toggleKeyName})";
                     BtnStartStop.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
                 }
                 else
@@ -322,7 +374,7 @@ namespace AutoClicker
                     TxtStatus.Text = "Stopped";
                     TxtStatus.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#94A3B8"));
 
-                    BtnStartStop.Content = "Start (F6)";
+                    BtnStartStop.Content = $"Start ({_toggleKeyName})";
                     BtnStartStop.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
                 }
             });
@@ -368,10 +420,14 @@ namespace AutoClicker
 
         private void OnTargetModeChanged(object sender, RoutedEventArgs e)
         {
-            if (GrpBackgroundTarget != null)
-            {
-                GrpBackgroundTarget.IsEnabled = RadioModeBackground.IsChecked == true;
-            }
+            bool isBg = RadioModeBackground?.IsChecked == true;
+            bool isFixed = RadioModeFixed?.IsChecked == true;
+
+            if (BtnPickTarget != null) BtnPickTarget.IsEnabled = isBg;
+            if (CmbActiveWindows != null) CmbActiveWindows.IsEnabled = isBg;
+            if (BtnRefreshWindows != null) BtnRefreshWindows.IsEnabled = isBg;
+            if (BtnTestClick != null) BtnTestClick.IsEnabled = isBg;
+            if (PanelCoordinates != null) PanelCoordinates.IsEnabled = isBg || isFixed;
         }
 
         private void OnTopMostChanged(object sender, RoutedEventArgs e)

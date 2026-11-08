@@ -74,6 +74,12 @@ namespace AutoClicker.Models
         public int MaxClicks { get; set; } = 1000;
         public double MaxTimeSeconds { get; set; } = 60.0;
 
+        // Hotkeys
+        public uint ToggleKeyVk { get; set; } = 0x75; // VK_F6
+        public string ToggleKeyName { get; set; } = "F6";
+        public uint PickKeyVk { get; set; } = 0x76;   // VK_F7
+        public string PickKeyName { get; set; } = "F7";
+
         // Options
         public bool PlayAudio { get; set; } = true;
         public bool TopMost { get; set; } = true;
